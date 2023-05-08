@@ -9,10 +9,12 @@ from sklearn.cluster import KMeans
 import numpy
 
 class RAEAgentReportEntry:
-    def __init__(self, suplier_number: int, receiver_number: int, reception_rate: float) -> None:
+    def __init__(self, suplier_number: int, receiver_number: int,
+                    reception_rate: float, service_answer_P: float) -> None:
         self.suplier_number = suplier_number
         self.receiver_number = receiver_number
         self.reception_rate = reception_rate
+        self.service_answer_P = service_answer_P
 
 class RAEAgentReport:
     def __init__(self) -> None:
@@ -105,7 +107,8 @@ class Agent:
         for agent in chosen_agents:
             service_answer_P = agent.do_service(self)
             service_reception_rate = self._count_service_reception_rate_R(agent, service_answer_P)
-            report.add_entry(RAEAgentReportEntry(agent.number, self.number, service_reception_rate))
+            report.add_entry(RAEAgentReportEntry(agent.number, self.number,
+                                                    service_reception_rate, service_answer_P))
 
         return report
 
@@ -115,7 +118,7 @@ class SimulationResults():
         self.avg_honest_agents_trust = []
         self.avg_honest_services_influence_on_strategic_agents_F = []
 
-    def count_statistics(self, agents_list: list(Agent)):
+    def count_statistics(self, agents_list: list(Agent), reports_entries: list(RAEAgentReportEntry)):
         honest_agents_trust_sum = 0
         honest_agents_number = 0
         strategic_agents_trust_sum = 0
@@ -131,12 +134,39 @@ class SimulationResults():
             else:
                 assert(0)
 
+        avg_F = self._count_avg_F(agents_list, reports_entries)
         self._add_iteration_values(strategic_agents_trust_sum/strategic_agents_number,
-                                    honest_agents_trust_sum/honest_agents_number)
+                                    honest_agents_trust_sum/honest_agents_number,
+                                    avg_F)
 
-    def _add_iteration_values(self, avg_strategic_agents_trus: float, avg_honest_agents_trust: float) -> None:
+    def _count_avg_F(self, agents_list: list(Agent), reports_entries: list(RAEAgentReportEntry)):
+        service_answer_when_honest_provide_to_strategic_sum = 0
+        service_answer_when_strategic_provider_to_honest_sum = 0
+
+        number_of_honest_provide_to_strategic = 0
+        number_of_strategic_provide_to_honest = 0
+
+        for report_entry in reports_entries:
+            if agents_list[report_entry.suplier_number].config.mode == AgentMode.HONEST \
+                and agents_list[report_entry.receiver_number].config.mode == AgentMode.STRATEGIC:
+
+                service_answer_when_honest_provide_to_strategic_sum += report_entry.service_answer_P
+                number_of_honest_provide_to_strategic += 1
+            elif agents_list[report_entry.suplier_number].config.mode == AgentMode.STRATEGIC \
+                and agents_list[report_entry.receiver_number].config.mode == AgentMode.HONEST:
+
+                service_answer_when_strategic_provider_to_honest_sum += report_entry.service_answer_P
+                number_of_strategic_provide_to_honest += 1
+
+        return (service_answer_when_honest_provide_to_strategic_sum/number_of_honest_provide_to_strategic) - (service_answer_when_strategic_provider_to_honest_sum/number_of_strategic_provide_to_honest)
+
+                     
+    def _add_iteration_values(self, avg_strategic_agents_trus: float,
+                                avg_honest_agents_trust: float,
+                                avg_F: float) -> None:
         self.avg_strategic_agents_trust.append(avg_strategic_agents_trus)
         self.avg_honest_agents_trust.append(avg_honest_agents_trust)
+        self.avg_honest_services_influence_on_strategic_agents_F.append(avg_F)
 
 class RAE:
     def __init__(self, honest_agents_number: int, all_agents_number: int, agent_config: AgentConfig, iterations_number: int) -> None:
@@ -156,7 +186,7 @@ class RAE:
             reports_entries += agent.do_work(self.agents).entries
         self._count_new_reception_trust_R_base_on_reports(reports_entries)
         self._assigne_new_trust_levels()
-        simulation_result.count_statistics(self.agents)
+        simulation_result.count_statistics(self.agents, reports_entries)
 
 
     def _count_new_reception_trust_R_base_on_reports(self, reports_entries: list(RAEAgentReportEntry)):
@@ -222,10 +252,10 @@ class RAE:
 
 def main():
     agent_config = AgentConfig(1, AgentMode.HONEST, 0.5, 0.8, 0.3, 1, 1, 50, 150)
-    # all_agents_number = 200
-    # strategic_agents_number = 50
-    all_agents_number = 1000
-    strategic_agents_number = 250
+    all_agents_number = 200
+    strategic_agents_number = 50
+    # all_agents_number = 1000
+    # strategic_agents_number = 250
     honest_agents_number = all_agents_number - strategic_agents_number
     iterations_number = 10
 
@@ -233,7 +263,8 @@ def main():
     result = rae.do_simulation()
     print(result.avg_honest_agents_trust)
     print(result.avg_strategic_agents_trust)
-    
+    print(result.avg_honest_services_influence_on_strategic_agents_F)
+
 
 if __name__ == "__main__":
     main()
