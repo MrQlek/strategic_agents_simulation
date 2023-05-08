@@ -7,6 +7,7 @@ from copy import copy
 
 from sklearn.cluster import KMeans
 import numpy
+import matplotlib.pyplot as plt
 
 class RAEAgentReportEntry:
     def __init__(self, suplier_number: int, receiver_number: int,
@@ -200,6 +201,7 @@ class RAE:
     def _assigne_new_trust_levels(self):
         clusters_boundry = self._get_clusters_boundry()
         low_set_trust_level = self._count_low_set_trust_level(clusters_boundry)
+        print(low_set_trust_level)
         for agent in self.agents:
             if agent.new_reception_trust_R < clusters_boundry:
                 agent.trust_level_V = low_set_trust_level
@@ -232,6 +234,11 @@ class RAE:
                 high_set_sum += agent.new_reception_trust_R 
                 high_set_size += 1
 
+        print(f"{low_set_size=}")
+        print(f"{low_set_sum=}")
+        print(f"{high_set_size=}")
+        print(f"{high_set_sum=}")
+
         return (low_set_sum/low_set_size)/(high_set_sum/high_set_size)
 
 
@@ -244,26 +251,112 @@ class RAE:
         return honest_agents + strategic_agents
 
 
+class SimulationConfig():
+    def __init__(self) -> None:
+        self.start_trust = 1
+        self.x = 0.5
+        self.y = 0.4
+        self.z = 0.3
+        self.expoA = 1
+        self.expoG = 1
+        self.kmin = 50
+        self.kmax = 150
+        self.all_agents_number = 200
+        self.strategic_agents_number = 50
+        # self.all_agents_number = 1000
+        # self.strategic_agents_number = 250
+        self.honest_agents_number = self.all_agents_number - self.strategic_agents_number
+        self.iterations_number = 15
+
+    @property
+    def agent_config(self):
+        return AgentConfig(
+            self.start_trust,
+            AgentMode.HONEST,
+            self.x, self.y, self.z,
+            self.expoA, self.expoG,
+            self.kmin, self.kmax)
+
+    def __str__(self):
+        return f"PARAMS: N={self.all_agents_number}, S={self.strategic_agents_number}, expoA={self.expoA}, expoG={self.expoG}, x={self.x}, y={self.y}, z={self.z}, V_0={self.start_trust}"
 
 
+class SimulationResultsOutput():
+    def __init__(self, result: SimulationResults, simulation_config: SimulationConfig) -> None:
+        self.result = result
+        self.simulation_config = simulation_config
+
+    def _draw_trust_trajectory_chart(self):
+        assert(len(self.result.avg_honest_agents_trust) == len(self.result.avg_strategic_agents_trust))
+        x_series = [i for i in range(len(self.result.avg_honest_agents_trust))]
+
+        honest_agents_trust_func, = plt.plot(x_series, self.result.avg_honest_agents_trust, label="honest agents")
+        strategic_agents_trust_func, = plt.plot(x_series, self.result.avg_strategic_agents_trust, label="strategic agents")
+        plt.xlabel("Iterations")
+        plt.ylabel("Trust trajectory")
+        plt.gca().set_ylim([0,1])
+        plt.title(self.simulation_config.__str__())
+        plt.legend(handles=[honest_agents_trust_func, strategic_agents_trust_func])
+        plt.grid()
+
+    def _draw_service_influence_chart(self):
+        x_series = [i for i in range(len(self.result.avg_honest_services_influence_on_strategic_agents_F))]
+
+        serive_influence, = plt.plot(x_series, self.result.avg_honest_services_influence_on_strategic_agents_F, label="honest agents")
+        plt.xlabel("Iterations")
+        plt.ylabel("Honest agents service influence on strategic agents")
+        plt.gca().set_ylim([-1,1])
+        plt.title(self.simulation_config.__str__())
+        plt.legend(handles=[serive_influence])
+        plt.grid()
 
 
+    def _save_current_chart_to_file(self, file_name: str):
+        plt.savefig(f'./results/{file_name}.png')
+        plt.close()
+
+
+    def save_charts_to_files(self):
+        self._draw_trust_trajectory_chart()
+        self._save_current_chart_to_file(f"trust_{self.simulation_config.__str__().replace(', ', '_').replace(': ', '_')}")
+        self._draw_service_influence_chart()
+        self._save_current_chart_to_file(f"influence_{self.simulation_config.__str__().replace(', ', '_').replace(': ', '_')}")
+    
+    def display_charts(self):
+        self._draw_trust_trajectory_chart()
+        plt.show()
+        pass
+
+    def save_result_to_csv(self):
+        assert(len(self.result.avg_honest_agents_trust) == len(self.result.avg_strategic_agents_trust))
+        assert(len(self.result.avg_honest_agents_trust) == len(self.result.avg_honest_services_influence_on_strategic_agents_F))
+        with open(f"results/result_{self.simulation_config.__str__().replace(', ', '_').replace(': ', '_')}.csv", 'w') as f:
+            f.write("iteration;avg_honest_agents_trust;avg_strategic_agents_trust;avg_honest_services_influence_on_strategic_agents_F\r\n")
+            for i in range(len(self.result.avg_honest_agents_trust)):
+                f.write(f"{i};{self.result.avg_honest_agents_trust[i]};{self.result.avg_strategic_agents_trust[i]};{self.result.avg_honest_services_influence_on_strategic_agents_F[i]}\r\n")
+
+def make_simulation(simulation_config: SimulationConfig):
+    rae = RAE(simulation_config.honest_agents_number,
+                simulation_config.all_agents_number,
+                simulation_config.agent_config,
+                simulation_config.iterations_number)
+    result = rae.do_simulation()
+    result_output = SimulationResultsOutput(result, simulation_config)
+    result_output.save_charts_to_files()
+    result_output.save_result_to_csv()
 
 
 def main():
-    agent_config = AgentConfig(1, AgentMode.HONEST, 0.5, 0.8, 0.3, 1, 1, 50, 150)
-    all_agents_number = 200
-    strategic_agents_number = 50
-    # all_agents_number = 1000
-    # strategic_agents_number = 250
-    honest_agents_number = all_agents_number - strategic_agents_number
-    iterations_number = 10
+    simulation_config = SimulationConfig()
+    for x in range(1,6):
+        for y in range(1,6):
+            for z in range(1,6):
+                simulation_config.x = 0.2*x
+                simulation_config.y = 0.2*y
+                simulation_config.z = 0.2*z
+                print(simulation_config.__str__())
+                make_simulation(simulation_config)
 
-    rae = RAE(honest_agents_number, all_agents_number, agent_config, iterations_number)
-    result = rae.do_simulation()
-    print(result.avg_honest_agents_trust)
-    print(result.avg_strategic_agents_trust)
-    print(result.avg_honest_services_influence_on_strategic_agents_F)
 
 
 if __name__ == "__main__":
