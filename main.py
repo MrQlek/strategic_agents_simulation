@@ -9,6 +9,18 @@ from sklearn.cluster import KMeans
 import numpy
 import matplotlib.pyplot as plt
 
+cumulative_distribution_A = [6, 15, 26, 36, 37, 55, 44, 56, 47, 67, 66, 67, 75, 64, 72, 75, 73, 77, 85, 125, 116, 117, 116, 112, 127, 145, 101, 123, 120, 150, 162, 119, 125, 129, 137, 115, 148, 143, 150, 144, 134, 151, 139, 115, 158, 124, 120, 136, 134, 134, 117, 124, 131, 130, 141, 143, 118, 115, 131, 163, 119, 103, 125, 125, 124, 139, 117, 115, 109, 117, 108, 98, 117, 94, 120, 116, 127, 120, 120, 153, 142, 120, 138, 127, 125, 116, 121, 108, 156, 132, 122, 108, 130, 119, 123, 117, 132, 114, 626, 167568]
+cumulative_distribution_A_choice = []
+for idx, item in enumerate(cumulative_distribution_A):
+    cumulative_distribution_A_choice+=[(idx+1)]*item
+
+cumulative_distribution_G = [2, 22, 29, 30, 1, 33, 29, 1, 14, 8, 11, 5, 34, 64, 45, 11, 83, 146, 101, 100, 112, 161, 192, 105, 109, 208, 198, 157, 87, 197, 222, 184, 586, 158, 172, 215, 437, 248, 214, 161, 351, 298, 417, 386, 443, 728, 566, 570, 559, 501, 1633, 586, 622, 841, 1002, 1844, 7236, 1304, 1604, 2590, 5582, 4274, 2462, 2338, 4840, 2947, 3377, 3791, 4648, 3680, 3319, 3522, 5746, 4503, 4025, 4588, 3652, 4450, 5862, 4968, 4739, 4196, 5498, 11824, 4673, 5943, 4306, 5218, 4748, 3565, 1379, 1876, 3155, 1752, 1259, 824, 94]
+cumulative_distribution_G_choice = []
+for idx, item in enumerate(cumulative_distribution_G):
+    cumulative_distribution_G_choice+=[(idx)]*item
+
+
+
 class RAEAgentReportEntry:
     def __init__(self, suplier_number: int, receiver_number: int,
                     reception_rate: float, service_answer_P: float) -> None:
@@ -59,8 +71,14 @@ class Agent:
 
         self.new_reception_trust_R = 0
 
-    def _randomize_A(self):
+    def _randomize_A_partA(self):
         return math.pow(random.random(), 1/self.config.expoA)
+
+    def _randomize_A_partB(self):
+        return random.choice(cumulative_distribution_A_choice)/100
+
+    def _randomize_A(self):
+        return self._randomize_A_partB()
 
     def _count_honset_p(self, receiver: Agent) -> float:
         if receiver.trust_level_V >= 1 - self.config.good_will_honest_x:
@@ -79,9 +97,14 @@ class Agent:
             return self._count_strategic_p(receiver)
         assert(0)
 
+    def _randomize_G_partA(self):
+        return math.pow(random.random(), 1/self.config.expoG)
+
+    def _randomize_G_partB(self):
+        return random.choice(cumulative_distribution_G_choice)/100
 
     def _randomize_G(self):
-        return math.pow(random.random(), 1/self.config.expoG)
+        return self._randomize_G_partB()
 
     def _count_service_reception_rate_honest(self, service_answer_P: float) -> float:
         if self.trust_level_V >= 1 - self.config.good_will_honest_x:
@@ -261,12 +284,24 @@ class SimulationConfig():
         self.expoG = 1
         self.kmin = 50
         self.kmax = 150
-        self.all_agents_number = 200
-        self.strategic_agents_number = 50
-        # self.all_agents_number = 1000
-        # self.strategic_agents_number = 250
+        # self.all_agents_number = 200
+        # self.strategic_agents_number = 50
+        self.all_agents_number = 1000
+        self._strategic_agents_number = int(input("Strategic agents number: "))
+        assert(self._strategic_agents_number < self.all_agents_number)
         self.honest_agents_number = self.all_agents_number - self.strategic_agents_number
-        self.iterations_number = 15
+        self.iterations_number = 8
+
+    @property
+    def strategic_agents_number(self):
+        return self._strategic_agents_number
+    
+    @strategic_agents_number.setter
+    def strategic_agents_number(self, val):
+        if val > self.all_agents_number:
+            return
+        self._strategic_agents_number = val
+        self.honest_agents_number = self.all_agents_number - self.strategic_agents_number
 
     @property
     def agent_config(self):
