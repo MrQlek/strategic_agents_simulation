@@ -277,9 +277,9 @@ class RAE:
 class SimulationConfig():
     def __init__(self) -> None:
         self.start_trust = 1
-        self.x = 0.5
-        self.y = 0.4
-        self.z = 0.3
+        self.x = float(input("Parametr x: "))
+        self.y = float(input("Parametr y: "))
+        self.z = float(input("Parametr z: "))
         self.expoA = 1
         self.expoG = 1
         self.kmin = 50
@@ -287,10 +287,10 @@ class SimulationConfig():
         # self.all_agents_number = 200
         # self.strategic_agents_number = 50
         self.all_agents_number = 1000
-        self._strategic_agents_number = int(input("Strategic agents number: "))
+        self._strategic_agents_number = int(input("Ilosc agentow strategicznych w systemie (liczba wszystkich agentow wysnosi 1000: "))
         assert(self._strategic_agents_number < self.all_agents_number)
         self.honest_agents_number = self.all_agents_number - self.strategic_agents_number
-        self.iterations_number = 8
+        self.iterations_number = int(input("Liczba symulowanych iteracji: "))
 
     @property
     def strategic_agents_number(self):
@@ -313,7 +313,7 @@ class SimulationConfig():
             self.kmin, self.kmax)
 
     def __str__(self):
-        return f"PARAMS: N={self.all_agents_number}, S={self.strategic_agents_number}, expoA={self.expoA}, expoG={self.expoG}, x={self.x}, y={self.y}, z={self.z}, V_0={self.start_trust}"
+        return f"PARAMS: N={self.all_agents_number}, S={self.strategic_agents_number}, x={self.x:.1f}, y={self.y:.1f}, z={self.z:.1f}"
 
 
 class SimulationResultsOutput():
@@ -329,7 +329,7 @@ class SimulationResultsOutput():
         strategic_agents_trust_func, = plt.plot(x_series, self.result.avg_strategic_agents_trust, label="strategic agents")
         plt.xlabel("Iterations")
         plt.ylabel("Trust trajectory")
-        plt.gca().set_ylim([0,1])
+        plt.gca().set_ylim([0,1.1])
         plt.title(self.simulation_config.__str__())
         plt.legend(handles=[honest_agents_trust_func, strategic_agents_trust_func])
         plt.grid()
@@ -383,16 +383,8 @@ def make_simulation(simulation_config: SimulationConfig):
 
 def main():
     simulation_config = SimulationConfig()
-    for x in range(1,6):
-        for y in range(1,6):
-            for z in range(1,6):
-                simulation_config.x = 0.2*x
-                simulation_config.y = 0.2*y
-                simulation_config.z = 0.2*z
-                print(simulation_config.__str__())
-                make_simulation(simulation_config)
-
-
+    print(simulation_config.__str__())
+    make_simulation(simulation_config)
 
 if __name__ == "__main__":
     main()
